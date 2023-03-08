@@ -4,6 +4,7 @@ import Select from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 // eslint-disable-next-line import/no-unresolved
+import dataURItoBlob from '@rjsf/utils';
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import PropTypes from "prop-types";
@@ -42,7 +43,7 @@ const ImageAnalysisForm = ({ obj_id }) => {
   const handleSubmit = async ({ formData }) => {
     const data = { ...formData };
     console.log(selectedFile)
-    data.image_data = selectedFile;
+    data.image_data = ';base64'.concat(`;name=${dataURItoBlob(selectedFile.name)};base64`);
     data.instrument_id = selectedInstrumentId;
     data.obstime = data.obstime.replace("+00:00", "").replace(".000Z", "");
 
