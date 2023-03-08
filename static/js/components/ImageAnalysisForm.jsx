@@ -26,7 +26,6 @@ const useStyles = makeStyles(() => ({
 }));
 
 const ImageAnalysisForm = ({ obj_id }) => {
-  console.log(obj_id)
   const classes = useStyles();
 
   const { telescopeList } = useSelector((state) => state.telescopes);
@@ -35,12 +34,16 @@ const ImageAnalysisForm = ({ obj_id }) => {
   const dispatch = useDispatch();
 
   const [selectedInstrumentId, setSelectedInstrumentId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState();
+  const [isSelected, setIsSelected] = useState(false);
 
   const defaultDate = dayjs().utc().format("YYYY-MM-DDTHH:mm:ssZ");
 
   const handleSubmit = async ({ formData }) => {
     const data = { ...formData };
-    /*data.instrument_id = selectedInstrumentId;*/
+    console.log(selectedFile)
+    data.image_data = selectedFile;
+    data.instrument_id = selectedInstrumentId;
     data.obstime = data.obstime.replace("+00:00", "").replace(".000Z", "");
 
     const result = await dispatch(
@@ -71,6 +74,11 @@ const ImageAnalysisForm = ({ obj_id }) => {
     instLookUp[instrumentObj.id] = instrumentObj;
   });
 
+  const handleFitsFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+    setIsSelected(true);
+  }
+
   const handleSelectedInstrumentChange = (e) => {
     setSelectedInstrumentId(e.target.value);
   };
@@ -93,27 +101,25 @@ const ImageAnalysisForm = ({ obj_id }) => {
   const imageAnalysisFormSchema = {
     type: "object",
     properties: {
-      image_data: {
-        type: "string",
-        format: "data-url",
-        title: "Image data file",
-        description: "Image data file",
-      },
       obstime: {
         type: "string",
         format: "date-time",
         title: "Image Date [UTC]",
         default: defaultDate,
       },
-      instrument: {
-        type: "number",
-        oneOf: instrumentList?.map((instrument) => ({
-          enum: [instrument.id],
-          title: `${telLookUp[instrument.telescope_id]?.name} / ${
-                instrument.name
-              }`,
+      filter: {
+        type: "string",
+        oneOf: instLookUp[selectedInstrumentId]?.filters.map((filter) => ({
+          enum: [filter],
+          title: `${filter}`,
         })),
-        title: "Instrument list",
+        title: "Filter list",
+        default: instLookUp[selectedInstrumentId]?.filters[0],
+      },
+      gain: {
+        type: "number",
+        title: "Gain",
+        default: instLookUp[selectedInstrumentId]?.gain,
       },
       s_n_detection: {
         type: "number",
@@ -155,40 +161,44 @@ const ImageAnalysisForm = ({ obj_id }) => {
         enum: templates,
       },
     },
-    required: ["obstime", "instrument", "image_data"],
-    dependencies: {
-        instrument: {
-            oneOf: [{
-              properties: {
-                instrument: {
-                  "enum": [
-                    0, 
-                  ]
-                },
-
-      filter: {
-        type: "string",
-        oneOf: instLookUp[0]?.filters.map((filter) => ({
-          enum: [filter],
-          title: `${filter}`,
-        })),
-        title: "Filter list",
-        default: instLookUp[0]?.filters[0],
-      },
-      gain: {
-        type: "number",
-        title: "Gain",
-        default: instLookUp[0]?.gain,
-      },
-      },
-      required: ["filter", "gain"],
-            }]
-        }
-  }
+    required: ["obstime", "filter"],
   };
 
   return (
     <div>
+      <div>
+        <input type="file" name="file" onChange={handleFitsFileChange} />
+        {isSelected ? (
+            <div>
+                <p>Filename: {selectedFile.name}</p>
+                <p>Filetype: {selectedFile.type}</p>
+                <p>Size in bytes: {selectedFile.size}</p>
+            </div>
+        ) : ( <p></p>)}
+    </div>
+      <div>
+        <InputLabel id="instrumentSelectLabel">Instrument</InputLabel>
+        <Select
+          inputProps={{ MenuProps: { disableScrollLock: true } }}
+          labelId="instrumentSelectLabel"
+          value={selectedInstrumentId || ""}
+          onChange={handleSelectedInstrumentChange}
+          name="gcnPageInstrumentSelect"
+          className={classes.SelectItem}
+        >
+          {instrumentList?.map((instrument) => (
+            <MenuItem
+              value={instrument.id}
+              key={instrument.id}
+              className={classes.instrumentSelectItem}
+            >
+              {`${telLookUp[instrument.telescope_id]?.name} / ${
+                instrument.name
+              }`}
+            </MenuItem>
+          ))}
+        </Select>
+      </div>
       <div>
         <Form
           schema={imageAnalysisFormSchema}
