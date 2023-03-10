@@ -4,7 +4,6 @@ import Select from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 // eslint-disable-next-line import/no-unresolved
-import dataURItoBlob from '@rjsf/utils';
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import PropTypes from "prop-types";
@@ -28,6 +27,14 @@ const useStyles = makeStyles(() => ({
 
 const ImageAnalysisForm = ({ obj_id }) => {
   const classes = useStyles();
+  const preview = document.querySelector("img#empty");
+  const header = document.querySelector("div#hdr");
+  const header_style = {
+      fontFamily: "Courier New",
+      maxWidth: "100ch",
+  };
+  const reader = new FileReader();
+  const readerh = new FileReader();
 
   const { telescopeList } = useSelector((state) => state.telescopes);
   const { instrumentList } = useSelector((state) => state.instruments);
@@ -39,11 +46,11 @@ const ImageAnalysisForm = ({ obj_id }) => {
   const [isSelected, setIsSelected] = useState(false);
 
   const defaultDate = dayjs().utc().format("YYYY-MM-DDTHH:mm:ssZ");
-
+  
   const handleSubmit = async ({ formData }) => {
     const data = { ...formData };
-    console.log(selectedFile)
-    data.image_data = ';base64'.concat(`;name=${dataURItoBlob(selectedFile.name)};base64`);
+
+    data.image_data = preview.src;
     data.instrument_id = selectedInstrumentId;
     data.obstime = data.obstime.replace("+00:00", "").replace(".000Z", "");
 
@@ -76,7 +83,18 @@ const ImageAnalysisForm = ({ obj_id }) => {
   });
 
   const handleFitsFileChange = (e) => {
+    const name = e.target.files[0].name
     setSelectedFile(e.target.files[0]);
+    reader.onload = (evt) => {
+        // convert image file to base64 string
+        preview.src = evt.target.result.replace(';base64', `;name=${encodeURIComponent(name)};base64`)
+      },
+    readerh.onload = (evt) => {
+        // convert image file to text
+        header.innerText = evt.target.result.split('END   ').slice(0, -1)
+      },
+    reader.readAsDataURL(e.target.files[0]);
+    readerh.readAsText(e.target.files[0]);
     setIsSelected(true);
   }
 
@@ -171,12 +189,13 @@ const ImageAnalysisForm = ({ obj_id }) => {
         <input type="file" name="file" onChange={handleFitsFileChange} />
         {isSelected ? (
             <div>
-                <p>Filename: {selectedFile.name}</p>
-                <p>Filetype: {selectedFile.type}</p>
                 <p>Size in bytes: {selectedFile.size}</p>
-            </div>
-        ) : ( <p></p>)}
-    </div>
+                <p>FITS Header:</p>
+            </div>    
+        ) : ( <p></p> )}
+        <div id="hdr" style={header_style}></div>
+        <img id="empty" src="" alt="" />
+      </div>
       <div>
         <InputLabel id="instrumentSelectLabel">Instrument</InputLabel>
         <Select
